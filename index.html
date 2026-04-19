@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emoji Explorer 🔍</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --surface2: #22222e;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.18);
+      --text: #f0f0f5;
+      --text-muted: #888899;
+      --text-faint: #555566;
+      --accent: #7c6aff;
+      --accent-glow: rgba(124,106,255,0.25);
+      --green: #3ecf8e;
+      --green-bg: rgba(62,207,142,0.12);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+    }
+
+    /* ---- Background decoration ---- */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 700px; height: 400px;
+      background: radial-gradient(ellipse at center, rgba(124,106,255,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ---- Header ---- */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    header h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #fff 30%, #7c6aff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.4rem;
+    }
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* ---- Search ---- */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 1.25rem;
+    }
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 17px;
+      pointer-events: none;
+    }
+    #search-input {
+      width: 100%;
+      padding: 13px 44px 13px 44px;
+      font-size: 15px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #search-input::placeholder { color: var(--text-faint); }
+    #search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    #clear-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 12px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    #clear-btn:hover { background: var(--border-hover); color: var(--text); }
+    #clear-btn.visible { display: flex; }
+
+    /* ---- Category tabs ---- */
+    .categories {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 1.25rem;
+    }
+    .cat-btn {
+      padding: 5px 13px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .cat-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .cat-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ---- Stats bar ---- */
+    #stats-bar {
+      font-size: 12px;
+      color: var(--text-faint);
+      margin-bottom: 0.85rem;
+      min-height: 18px;
+    }
+
+    /* ---- Grid ---- */
+    #emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+      gap: 8px;
+    }
+
+    .emoji-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 6px 9px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s, background 0.15s;
+      min-height: 78px;
+      user-select: none;
+    }
+    .emoji-card:hover {
+      transform: translateY(-3px) scale(1.04);
+      border-color: var(--border-hover);
+      background: var(--surface2);
+    }
+    .emoji-card:active { transform: scale(0.95); }
+    .emoji-card.copied {
+      border-color: var(--green);
+      background: var(--green-bg);
+    }
+
+    .emoji-char { font-size: 28px; line-height: 1; margin-bottom: 5px; }
+    .emoji-name {
+      font-size: 9px;
+      color: var(--text-faint);
+      text-align: center;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .emoji-card.copied .emoji-name { color: var(--green); }
+
+    /* ---- Empty / Loading ---- */
+    .message-box {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--text-muted);
+    }
+    .message-box .msg-icon { font-size: 40px; margin-bottom: 0.75rem; }
+    .message-box p { font-size: 15px; margin-bottom: 4px; }
+    .message-box small { font-size: 13px; color: var(--text-faint); }
+
+    /* Spinner */
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Tooltip ---- */
+    #tooltip {
+      position: fixed;
+      background: var(--text);
+      color: var(--bg);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.1s;
+      transform: translateY(-4px);
+    }
+    #tooltip.show { opacity: 1; }
+
+    /* ---- Overflow note ---- */
+    .overflow-note {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-faint);
+      padding: 0.75rem 0 0.25rem;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Emoji Explorer 🔍</h1>
+    <p>Browse 1,800+ emojis — click any to copy instantly</p>
+  </header>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Search by name… e.g. smile, fire, heart, cat" autocomplete="off" spellcheck="false" />
+    <button id="clear-btn" title="Clear">✕</button>
+  </div>
+
+  <div class="categories" id="cat-bar"></div>
+  <div id="stats-bar"></div>
+  <div id="emoji-grid">
+    <div class="message-box">
+      <div class="spinner"></div>
+      <p>Loading emojis…</p>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+  (function () {
+    'use strict';
+
+    const grid      = document.getElementById('emoji-grid');
+    const searchEl  = document.getElementById('search-input');
+    const clearBtn  = document.getElementById('clear-btn');
+    const catBar    = document.getElementById('cat-bar');
+    const statsBar  = document.getElementById('stats-bar');
+    const tooltip   = document.getElementById('tooltip');
+
+    let allEmoji      = [];
+    let activeCat     = 'All';
+    let query         = '';
+
+    /* -------------------------------------------------- */
+    /*  1. FETCH DATA                                       */
+    /* -------------------------------------------------- */
+    async function fetchEmoji() {
+      try {
+        const res = await fetch('https://cdn.jsdelivr.net/npm/emoji.json@15.0.0/emoji.json');
+        if (!res.ok) throw new Error('Network response was not ok');
+        const data = await res.json();
+        allEmoji = data.map(function (e) {
+          return { char: e.char, name: e.name, category: e.category };
+        });
+        buildCategories();
+        render();
+      } catch (err) {
+        grid.innerHTML =
+          '<div class="message-box"><div class="msg-icon">⚠️</div>' +
+          '<p>Could not load emoji data.</p>' +
+          '<small>Please check your internet connection and refresh.</small></div>';
+      }
+    }
+
+    /* -------------------------------------------------- */
+    /*  2. BUILD CATEGORY BUTTONS                           */
+    /* -------------------------------------------------- */
+    function buildCategories() {
+      var cats = ['All'];
+      var seen = {};
+      allEmoji.forEach(function (e) {
+        if (!seen[e.category]) { seen[e.category] = true; cats.push(e.category); }
+      });
+
+      catBar.innerHTML = '';
+      cats.forEach(function (cat) {
+        var btn = document.createElement('button');
+        btn.className = 'cat-btn' + (cat === 'All' ? ' active' : '');
+        btn.textContent = cat === 'All' ? '✨ All' : cat;
+        btn.addEventListener('click', function () {
+          activeCat = cat;
+          document.querySelectorAll('.cat-btn').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          render();
+        });
+        catBar.appendChild(btn);
+      });
+    }
+
+    /* -------------------------------------------------- */
+    /*  3. FILTER LOGIC                                     */
+    /* -------------------------------------------------- */
+    function getFiltered() {
+      var q = query.trim().toLowerCase();
+      return allEmoji.filter(function (e) {
+        var catOk  = activeCat === 'All' || e.category === activeCat;
+        var searchOk = !q || e.name.toLowerCase().indexOf(q) !== -1;
+        return catOk && searchOk;
+      });
+    }
+
+    /* -------------------------------------------------- */
+    /*  4. RENDER GRID                                      */
+    /* -------------------------------------------------- */
+    function render() {
+      var filtered = getFiltered();
+      var total    = allEmoji.length;
+
+      // Stats
+      if (filtered.length === total) {
+        statsBar.textContent = total.toLocaleString() + ' emojis';
+      } else {
+        statsBar.textContent = filtered.length.toLocaleString() + ' of ' + total.toLocaleString() + ' emojis';
+      }
+
+      // Empty state
+      if (filtered.length === 0) {
+        grid.innerHTML =
+          '<div class="message-box"><div class="msg-icon">🤷</div>' +
+          '<p>No emojis found for "' + escapeHtml(query) + '"</p>' +
+          '<small>Try a different keyword</small></div>';
+        return;
+      }
+
+      var LIMIT   = 600;
+      var showing = filtered.slice(0, LIMIT);
+      var frag    = document.createDocumentFragment();
+
+      showing.forEach(function (e) {
+        var card = document.createElement('div');
+        card.className = 'emoji-card';
+
+        var charEl = document.createElement('span');
+        charEl.className = 'emoji-char';
+        charEl.textContent = e.char;
+
+        var nameEl = document.createElement('span');
+        nameEl.className = 'emoji-name';
+        nameEl.textContent = e.name;
+
+        card.appendChild(charEl);
+        card.appendChild(nameEl);
+
+        // Tooltip
+        card.addEventListener('mouseenter', function (ev) {
+          tooltip.textContent = e.name;
+          tooltip.classList.add('show');
+          moveTooltip(ev);
+        });
+        card.addEventListener('mousemove', moveTooltip);
+        card.addEventListener('mouseleave', function () {
+          tooltip.classList.remove('show');
+        });
+
+        // Copy on click
+        card.addEventListener('click', function () {
+          copyText(e.char);
+          card.classList.add('copied');
+          nameEl.textContent = 'Copied!';
+          tooltip.textContent = '✓ Copied';
+          setTimeout(function () {
+            card.classList.remove('copied');
+            nameEl.textContent = e.name;
+            tooltip.classList.remove('show');
+          }, 1000);
+        });
+
+        frag.appendChild(card);
+      });
+
+      // Overflow note
+      if (filtered.length > LIMIT) {
+        var note = document.createElement('div');
+        note.className = 'overflow-note';
+        note.textContent = 'Showing ' + LIMIT + ' of ' + filtered.length + ' — type more to narrow results';
+        frag.appendChild(note);
+      }
+
+      grid.innerHTML = '';
+      grid.appendChild(frag);
+    }
+
+    /* -------------------------------------------------- */
+    /*  5. HELPERS                                          */
+    /* -------------------------------------------------- */
+    function moveTooltip(ev) {
+      tooltip.style.left = (ev.clientX + 12) + 'px';
+      tooltip.style.top  = (ev.clientY - 36) + 'px';
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity  = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* -------------------------------------------------- */
+    /*  6. EVENTS                                           */
+    /* -------------------------------------------------- */
+    searchEl.addEventListener('input', function () {
+      query = searchEl.value;
+      clearBtn.classList.toggle('visible', query.length > 0);
+      render();
+    });
+
+    clearBtn.addEventListener('click', function () {
+      searchEl.value = '';
+      query = '';
+      clearBtn.classList.remove('visible');
+      searchEl.focus();
+      render();
+    });
+
+    /* -------------------------------------------------- */
+    /*  INIT                                                */
+    /* -------------------------------------------------- */
+    fetchEmoji();
+  })();
+</script>
+
+</body>
+</html>
